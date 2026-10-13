@@ -1,0 +1,33 @@
+# 密钥扫描：本地 commit 前拦截（第 1 层）
+#
+# 合并进项目根目录的 .pre-commit-config.yaml。
+# 若项目已有该文件，把下面 repo 块追加进 repos: 列表，不要覆盖整个文件。
+#
+# 装完记得两件事：
+#   pre-commit install                 # 只对当前 clone 生效
+#   pre-commit autoupdate              # 定期 bump rev，否则漏新厂商模式
+#
+# 全团队默认带上（新 clone 也有）：
+#   pre-commit init-templatedir ~/.git-template
+#   git config --global init.templateDir ~/.git-template
+
+repos:
+  - repo: https://github.com/gitleaks/gitleaks
+    rev: v8.30.1
+    hooks:
+      # 三选一，按团队环境决定；三个变体的扫描命令完全一样。
+      #
+      # language: golang  -> 需要 Go 工具链，首次会下载并编译（CI 里最干净）
+      #                      不想装 Go 就用下面两个之一
+      - id: gitleaks            # language: golang
+      # - id: gitleaks-docker   # language: docker_image，需要 Docker
+      # - id: gitleaks-system   # language: system，自己保证 gitleaks 在 PATH
+
+# 注意：这两个参数不要去掉
+#   --redact   输出脱敏，密钥不会被打印进终端或 CI 日志
+#   --staged   只扫暂存区，速度快
+# 二者已写在 gitleaks 官方 hook 定义里，无需在项目配置中重复。
+#
+# 官方支持的单次跳过（要提前告知团队，否则会被当成"hook 失效"）：
+#   SKIP=gitleaks git commit -m "..."
+#   git commit --no-verify -m "..."     # 跳过全部 hook，别养成习惯

@@ -16,6 +16,9 @@ Pi Coding Agent 自定义技能集（agent skills）。每个目录是一个独�
 ### skill-search
 在多个技能/插件目录（skills.sh、mcp.so、pi.dev/packages）跨站并行检索 skill、MCP server 与 Pi 包，跨源去重、按相关性 + 流行度排序，秒级返回统一结果。只负责"找现成的"。
 
+### secret-defense
+代码仓库硬编码密钥的审计与防护：GitHub Secret Scanning / Push Protection、gitleaks 本地与 CI 门禁，以及密钥泄漏应急响应（先轮换，再清理历史）。
+
 ### skill-creator
 创建、修改与优化 agent skill 的方法论：从零新建技能、改进正文或触发描述、写测试用例，或把对话中已跑通的流程固化成可复用技能。
 

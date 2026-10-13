@@ -1,0 +1,69 @@
+# gitleaks 配置起步模板
+#
+# 放到仓库根目录，命名 .gitleaks.toml。
+# useDefault = true 表示"在 gitleaks 内置规则上加料"，绝大多数项目用这一种。
+# 只有当你要完全接管规则集时才去掉它（那样会丢掉所有内置 provider patterns，通常不该做）。
+
+[extend]
+useDefault = true
+# useDefault 与 path 不能同时使用。
+
+# ─────────────────────────────────────────────────────────────
+# 全局 allowlist（优先级高于规则级 allowlist）
+# 目的：把测试 fixture、示例文档、占位值这类必然误报的东西一次性豁免掉，
+#      避免开发者因为误报而习惯性 --no-verify（那会让整个防线失效）。
+# 宁可在这里多写几行，也不要去放宽或关掉规则。
+# ─────────────────────────────────────────────────────────────
+
+[[allowlists]]
+description = "测试 fixture 与示例文档"
+paths = [
+  '''(^|/)tests?/fixtures?/.*''',
+  '''(^|/)testdata/.*''',
+  '''(^|/)docs?/examples?/.*''',
+  '''.*\.md$''',
+]
+
+[[allowlists]]
+description = "示例文档里的占位值"
+# 用 stopwords 豁免"提取出的 secret 里含这些词"的 finding。
+# 不要把形状像真 key 的字符串粘进来当黑名单——它本身可能被下游扫描器/厂商告警。
+stopwords = [
+  '''example''',
+  '''dummy''',
+  '''placeholder''',
+  '''changeme''',
+  '''your-key-here''',
+]
+
+# ─────────────────────────────────────────────────────────────
+# 规则级 allowlist：只针对某条规则放宽
+# v8.21.0 起 [rules.allowlist] 改名为 [[rules.allowlists]]
+# ─────────────────────────────────────────────────────────────
+
+# [[rules]]
+# id = "generic-api-key"
+#     [[rules.allowlists]]
+#     description = "本地开发用的假 key，固定在 mock 服务器配置里"
+#     condition = "AND"          # OR（默认）/ AND
+#     regexTarget = "line"       # secret（默认）/ match / line
+#     regexes = ['''localhost''']
+#     paths = ['''config/dev\.yml''']
+
+# ─────────────────────────────────────────────────────────────
+# 自研 token 格式：往这里加规则。
+# 这次泄漏的是什么格式，就把什么格式补进来，否则下次照样漏。
+# ─────────────────────────────────────────────────────────────
+
+# [[rules]]
+# id = "acme-internal-token"
+# description = "ACME 内部服务 token"
+# regex = '''acme_[a-z0-9]{32}'''
+# keywords = ["acme_"]
+
+# ─────────────────────────────────────────────────────────────
+# 其他豁免途径（按粒度从细到粗）
+#   1. 行内注释：api_key = "..."  #gitleaks:allow
+#   2. 仓库根 .gitleaksignore：写 finding 的 Fingerprint（实验性）
+#   3. 本文件的 allowlist（团队共享，首选）
+# ─────────────────────────────────────────────────────────────

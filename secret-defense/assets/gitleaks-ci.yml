@@ -1,0 +1,61 @@
+# 密钥扫描：CI 门禁（第 2 层）
+#
+# 放到 .github/workflows/gitleaks.yml
+# 这是**不可绕过**的一层：开发者绕过本地 hook 也没用。
+#
+# 老仓库注意：先出基线再开门禁，否则第一次就被历史 finding 淹没，结果通常是门禁被关掉。
+#   gitleaks git --report-path baseline.json
+# 然后把 baseline.json 提交进仓库，并给下面的命令加 --baseline-path baseline.json
+# （用二进制方案时；用 action 则通过 GITLEAKS_CONFIG / inputs 传）。
+
+name: gitleaks
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+  workflow_dispatch:
+  schedule:
+    - cron: "0 4 * * *"   # 每天全量扫一次，覆盖只在 PR 之外发生的变更
+
+permissions:
+  contents: read
+  pull-requests: write    # gitleaks-action 需要在 PR 上留评论时可保留
+
+jobs:
+  scan:
+    name: gitleaks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0   # 必须。浅克隆扫不到历史
+
+      # ── 方案 A：官方 action（省事，但组织仓库需要付费 license）────────────
+      # 个人账号：删掉 GITLEAKS_LICENSE 那行即可。
+      # 组织仓库：不配 GITLEAKS_LICENSE 会失败，改用下面的方案 B。
+      # 必须用 @v3：@v2 基于 Node 20，GitHub 已于 2026-09-16 从托管 runner 移除。
+      - uses: gitleaks/gitleaks-action@v3
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITLEAKS_LICENSE: ${{ secrets.GITLEAKS_LICENSE }}
+
+      # ── 方案 B：直接跑二进制（免 license，组织里推荐）────────────────────
+      # 用方案 B 时把上面 action 那两步删掉，并保留 actions/checkout。
+      # 代价：版本号要自己维护，升级时改这里。
+      #
+      # - name: Run gitleaks
+      #   run: |
+      #     GL_VERSION=8.30.1
+      #     curl -sSL -o gl.tar.gz \
+      #       "https://github.com/gitleaks/gitleaks/releases/download/v${GL_VERSION}/gitleaks_${GL_VERSION}_linux_x64.tar.gz"
+      #     tar -xzf gl.tar.gz gitleaks
+      #     ./gitleaks git --redact --verbose --exit-code 1 \
+      #       --report-path gitleaks-report.json
+      #
+      # - name: Upload report
+      #   if: always()
+      #   uses: actions/upload-artifact@v4
+      #   with:
+      #     name: gitleaks-report
+      #     path: gitleaks-report.json
